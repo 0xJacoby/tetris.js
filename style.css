@@ -40,6 +40,17 @@ body {
     top: 55px;
 }
 
+#lose {
+    display: none;
+    position: absolute;
+    left: 25px;
+    top: 350px;
+    height: 200px;
+    width: 400px;
+    color: white;
+    font-family: "Bolshevik";
+}
+
 #sidepanel {
     border: solid 5px white;
     height: 840px;
@@ -47,6 +58,21 @@ body {
     margin-top: 100px;
     margin-left: auto;
     width: 233px;
+}
+
+#nextpiece {
+    position: absolute;
+    border: solid 5px white;
+    right: 42px;
+    top: 120px;
+    padding: 15px;
+}
+
+.sidepaneltext {
+    position: absolute;
+    color: white;
+    font-family: "Bolshevik";
+    font-size: 1.5em;
 }
 
 #canvas {
