@@ -3,9 +3,12 @@
 let canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 let gameGrid = Array(10).fill().map(a => Array(21).fill().map(a => -1)); // 10x21 block grid for pieces
-let tetro = {x: 0, y: 0, blocks: Array(4), shapeIndex: 1, rotation: 0}; // the current position of the moving piece and its blocks.
+let tetro = {x: 4, y: 0, blocks: Array(4), shapeIndex: 1, rotation: 0}; // the current position of the moving piece and its blocks.
 let canMove = true;
 let canRotate = true;
+let level = 0;
+let calculatedDropDelay = 900 * (1 - (level * 0.01));
+let dropDelay = calculatedDropDelay;
 
 const blockSize = 40; // size of one block
 
@@ -120,8 +123,8 @@ function rotateTetromino() {
 // main canvas setup function
 function setupCanvas() {
     updateCanvas();
-
     drawTetromino(0);
+    mainLoop();
 
 }
 
@@ -139,7 +142,62 @@ function updateCanvas() {
     }
 }
 
-document.querySelector('body').onkeydown = function(e) {
+function mainLoop() {
+    let possible = true;
+    let lowestBlock = [[0,0]];
+    tetro.blocks.forEach(e => {
+        if (e[1] > lowestBlock[0][1]) {
+            lowestBlock = [];
+            lowestBlock.push(e);
+        } else if (e[1] == lowestBlock[0][1]) {
+            lowestBlock.push(e);
+        }
+    });
+
+    tetro.blocks.forEach(e => {
+        if (e[1] === 20) {
+            possible = false;
+        } else {
+            lowestBlock.forEach(e => {
+                if (gameGrid[e[0]][e[1] + 1] !== -1) {
+                    possible = false;
+                }
+            });
+        }
+    });
+
+
+    if (possible) {
+        tetro.blocks.forEach(e => {
+            gameGrid[e[0]][e[1]] = -1;
+        });
+
+        tetro.blocks.forEach(e => {
+            gameGrid[e[0]][e[1] + 1] = tetro.shapeIndex;
+            e[1] += 1;
+        });
+
+        updateCanvas();
+
+        tetro.y += 1;
+
+        setTimeout(mainLoop, dropDelay);
+
+    } else {
+        tetro = {x: 4, y: 0, blocks: Array(4), shapeIndex: 1, rotation: 0};
+        updateCanvas();
+        drawTetromino(0);
+        setTimeout(mainLoop, dropDelay);
+    }
+}
+
+document.querySelector("body").onkeyup = function(e) {
+    if (e.keyCode === 40 || e.keyCode === 83) {
+        dropDelay = calculatedDropDelay;
+    }
+};
+
+document.querySelector("body").onkeydown = function(e) {
     switch (e.keyCode) {
         case 37: // left arrow key
             if (canMove) {
@@ -160,7 +218,7 @@ document.querySelector('body').onkeydown = function(e) {
             break;
 
         case 40: // down arrow key
-
+            dropDelay = 50;
             break;
         
 
@@ -183,7 +241,7 @@ document.querySelector('body').onkeydown = function(e) {
             break;
 
         case 83: // S key
-            
+            dropDelay = 50;
             break;
 
         case 68: // D key
