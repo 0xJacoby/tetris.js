@@ -3,7 +3,7 @@
 let canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 let gameGrid = Array(10).fill().map(a => Array(21).fill().map(a => -1)); // 10x21 block grid for pieces
-let tetro = {x: 4, y: 0, blocks: Array(4), shapeIndex: 1, rotation: 0}; // the current position of the moving piece and its blocks.
+let tetro = {x: 4, y: 0, blocks: Array(4), shapeIndex: 1, rotation: 0, locked: false}; // the current position of the moving piece and its blocks.
 let canMove = true;
 let canRotate = true;
 let level = 0;
@@ -27,19 +27,33 @@ function drawTetromino() {
     let row = 0, column = 0;
     let shape = Object.values(tetrominos)[tetro.shapeIndex];
     let block = shape.rotations[tetro.rotation];
-    ctx.fillStyle = shape.color;
+    let renderQueue = [];
 
     for (let bit = 0x8000; bit > 0; bit = bit >> 1) {
         if (block & bit) {
-            gameGrid[tetro.x + column][tetro.y + row] = tetro.shapeIndex;
-            tetro.blocks.push([tetro.x + column, tetro.y + row]);
-            updateCanvas();
+            if (gameGrid[tetro.x + column][tetro.y + row] === -1 || gameGrid[tetro.x + column][tetro.y + row] === 10) {
+                renderQueue.push([tetro.x + column, tetro.y + row]);
+                
+            }
         }
         
         if (++column === 4) {
             column = 0;
             ++row;
         }
+    }
+
+    if (renderQueue.length === 4) {
+        renderQueue.forEach(e => {
+            if (gameGrid[e[0]][e[1] + 1] !== -1 && gameGrid[e[0]][e[1] + 1] !== 10) {
+                tetro.locked = true;
+            }
+            gameGrid[e[0]][e[1]] = 10;
+            tetro.blocks.push(e);
+            updateCanvas();
+        });
+    } else {
+        throw "error";
     }
 }
 
@@ -55,7 +69,16 @@ function moveTetromino(distance) {
                 possible = false;
             }
         }
+        
+        try {
+            if (gameGrid[e[0] + distance][e[1]] !== 10 && gameGrid[e[0] + distance][e[1]] !== -1) {
+                possible = false;
+            }
+        } catch {
+        }
     });
+
+
 
     if (possible) {
         tetro.blocks.forEach(e => {
@@ -63,7 +86,7 @@ function moveTetromino(distance) {
         });
 
         tetro.blocks.forEach(e => {
-            gameGrid[e[0] + distance][e[1]] = tetro.shapeIndex;
+            gameGrid[e[0] + distance][e[1]] = 10;
             e[0] = e[0] + distance;
         });
 
@@ -91,7 +114,7 @@ function rotateTetromino() {
         });
     }
 
-    if (canRotate && possible) {
+    if (canRotate && possible && !tetro.locked) {
         canRotate = false;
 
         if (tetro.rotation === 3) {
@@ -115,7 +138,7 @@ function rotateTetromino() {
             gameGrid = temp[2];
         }
 
-        setTimeout(function(){ canRotate = true; }, 150);
+        setTimeout(function(){ canRotate = true; }, 200);
 
     }
 }
@@ -134,6 +157,9 @@ function updateCanvas() {
         for (let y = 0; y < 21; y++) {
             if (gameGrid[x][y] === -1) {
                 ctx.clearRect(x * blockSize, y * blockSize, blockSize, blockSize);
+            } else if (gameGrid[x][y] === 10) {            
+                ctx.fillStyle = Object.values(tetrominos)[tetro.shapeIndex].color;
+                ctx.fillRect(x * blockSize, y * blockSize, blockSize, blockSize);
             } else {
                 ctx.fillStyle = Object.values(tetrominos)[gameGrid[x][y]].color;
                 ctx.fillRect(x * blockSize, y * blockSize, blockSize, blockSize);
@@ -144,36 +170,35 @@ function updateCanvas() {
 
 function mainLoop() {
     let possible = true;
-    let lowestBlock = [[0,0]];
-    tetro.blocks.forEach(e => {
-        if (e[1] > lowestBlock[0][1]) {
-            lowestBlock = [];
-            lowestBlock.push(e);
-        } else if (e[1] == lowestBlock[0][1]) {
-            lowestBlock.push(e);
-        }
-    });
+    // let lowestBlock = [[0,0]];
+    // tetro.blocks.forEach(e => {
+    //     if (e[1] > lowestBlock[0][1]) {
+    //         lowestBlock = [];
+    //         lowestBlock.push(e);
+    //     } else if (e[1] == lowestBlock[0][1]) {
+    //         lowestBlock.push(e);
+    //     }
+    // });
 
     tetro.blocks.forEach(e => {
         if (e[1] === 20) {
             possible = false;
         } else {
-            lowestBlock.forEach(e => {
-                if (gameGrid[e[0]][e[1] + 1] !== -1) {
-                    possible = false;
-                }
-            });
+            if (gameGrid[e[0]][e[1] + 1] !== -1 && gameGrid[e[0]][e[1] + 1] !== 10) {
+                possible = false;
+            }
         }
     });
 
 
     if (possible) {
+        setTimeout(mainLoop, dropDelay);
         tetro.blocks.forEach(e => {
             gameGrid[e[0]][e[1]] = -1;
         });
 
         tetro.blocks.forEach(e => {
-            gameGrid[e[0]][e[1] + 1] = tetro.shapeIndex;
+            gameGrid[e[0]][e[1] + 1] = 10;
             e[1] += 1;
         });
 
@@ -181,18 +206,22 @@ function mainLoop() {
 
         tetro.y += 1;
 
-        setTimeout(mainLoop, dropDelay);
 
     } else {
-        tetro = {x: 4, y: 0, blocks: Array(4), shapeIndex: 1, rotation: 0};
+        tetro.blocks.forEach(e => {
+            gameGrid[e[0]][e[1]] = tetro.shapeIndex;
+        });
+
+        tetro = {x: 4, y: 0, blocks: Array(4), shapeIndex: 1, rotation: 0, locked: false};
+        dropDelay = calculatedDropDelay;
         updateCanvas();
         drawTetromino(0);
-        setTimeout(mainLoop, dropDelay);
+        mainLoop();
     }
 }
 
 document.querySelector("body").onkeyup = function(e) {
-    if (e.keyCode === 40 || e.keyCode === 83) {
+    if ((e.keyCode === 40 || e.keyCode === 83) && dropDelay !== calculatedDropDelay) {
         dropDelay = calculatedDropDelay;
     }
 };
@@ -218,7 +247,9 @@ document.querySelector("body").onkeydown = function(e) {
             break;
 
         case 40: // down arrow key
-            dropDelay = 50;
+            if (dropDelay !== 50)  {
+                dropDelay = 50;
+            }
             break;
         
 
@@ -241,7 +272,9 @@ document.querySelector("body").onkeydown = function(e) {
             break;
 
         case 83: // S key
-            dropDelay = 50;
+            if (dropDelay !== 50)  {
+                dropDelay = 50;
+            }
             break;
 
         case 68: // D key

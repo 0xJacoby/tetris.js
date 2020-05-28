@@ -12,12 +12,13 @@ body {
 }
     
 #board {
+    border-radius: 10px;
     position: fixed;
     top: calc(50% - 504px);
     height: 976px;
     width: 688px;
     margin: 2vh;
-    left: calc(50% - 344px);
+    left: calc(50% - 344px - 1vh);
     background-color: rgba(5, 5, 10, 0.6);
 }
 
@@ -60,7 +61,7 @@ body {
 }
 
 
-@media screen and (max-width: 840px) {
+@media screen and (max-width: 720px) {
     #board {
         display: none;
     }
